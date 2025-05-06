@@ -1,0 +1,12 @@
+<svg width="200" height="100" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background shapes -->
+  <path d="M30,10 L120,5 L150,30 L140,80 L60,90 L20,70 Z" fill="#0099a9" /> <!-- Teal color -->
+  <path d="M90,10 L170,20 L180,60 L130,85 L70,80 Z" fill="#004c97" /> <!-- Blue color -->
+  
+  <!-- Letters -->
+  <text x="80" y="65" font-family="Arial, sans-serif" font-size="50" font-weight="bold" fill="white">
+    <tspan x="50" dy="0">n</tspan>
+    <tspan x="85" dy="0">c</tspan>
+    <tspan x="120" dy="0">b</tspan>
+  </text>
+</svg> 
