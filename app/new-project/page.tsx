@@ -11,9 +11,9 @@ export default function NewProject() {
     const [error, setError] = useState("");
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+    const [showIntroduction, setShowIntroduction] = useState(true);
 
     useEffect(() => {
-        // Laad beschikbare stemmen
         const loadVoices = () => {
             const availableVoices = window.speechSynthesis.getVoices();
             setVoices(availableVoices);
@@ -27,14 +27,41 @@ export default function NewProject() {
         };
     }, []);
 
+    const startExercise = async () => {
+        setShowIntroduction(false);
+        await fetchInitialGreeting();
+    };
+
+    const fetchInitialGreeting = async () => {
+        try {
+            const response = await fetch("/api/text-to-speech", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    isInitialGreeting: true
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Er is een fout opgetreden bij het ophalen van de begroeting");
+            }
+
+            const data = await response.json();
+            setBakerResponse(data.text);
+            speakText(data.text);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const speakText = (text: string) => {
         if ('speechSynthesis' in window) {
-            // Stop eventuele huidige spraak
             window.speechSynthesis.cancel();
 
             const utterance = new SpeechSynthesisUtterance(text);
 
-            // Zoek de beste Nederlandse stem
             const dutchVoice = voices.find(voice =>
                 voice.lang.includes('nl') && voice.name.includes('Female')
             ) || voices.find(voice => voice.lang.includes('nl')) || voices[0];
@@ -43,13 +70,11 @@ export default function NewProject() {
                 utterance.voice = dutchVoice;
             }
 
-            // Aangepaste parameters voor natuurlijkere spraak
             utterance.lang = 'nl-NL';
-            utterance.rate = 0.95; // Iets langzamer voor natuurlijkere spraak
-            utterance.pitch = 1.0; // Neutrale toonhoogte
-            utterance.volume = 1.0; // Maximale volume
+            utterance.rate = 0.85;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
 
-            // Voeg pauzes toe aan leestekens voor natuurlijkere spraak
             const textWithPauses = text
                 .replace(/[.,!?]/g, match => match + ' ')
                 .replace(/\s+/g, ' ');
@@ -107,6 +132,56 @@ export default function NewProject() {
         }
     };
 
+    if (showIntroduction) {
+        return (
+            <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-12 bg-[#004c97]">
+                <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg p-8">
+                    <h1 className="text-3xl font-bold text-center mb-6 text-[#004c97]">
+                        Nederlandse Taaloefening: Gesprek met de Bakker
+                    </h1>
+
+                    <div className="space-y-6 text-gray-700">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                            <h2 className="text-xl font-semibold mb-2 text-[#0099a9]">Doel van de Oefening</h2>
+                            <p>Oefen je Nederlandse spreekvaardigheid door een gesprek te voeren met de bakker. Deze oefening is geschikt voor niveau A1 tot B1.</p>
+                        </div>
+
+                        <div className="bg-green-50 p-4 rounded-lg">
+                            <h2 className="text-xl font-semibold mb-2 text-[#0099a9]">Hoe werkt het?</h2>
+                            <ul className="list-disc list-inside space-y-2">
+                                <li>De bakker begint het gesprek met een begroeting</li>
+                                <li>Je kunt reageren door je antwoord in te typen</li>
+                                <li>De bakker spreekt langzaam en duidelijk</li>
+                                <li>Je kunt de tekst opnieuw laten afspelen</li>
+                                <li>Gebruik eenvoudige zinnen en dagelijkse woorden</li>
+                            </ul>
+                        </div>
+
+                        <div className="bg-yellow-50 p-4 rounded-lg">
+                            <h2 className="text-xl font-semibold mb-2 text-[#0099a9]">Tips</h2>
+                            <ul className="list-disc list-inside space-y-2">
+                                <li>Begin met eenvoudige begroetingen</li>
+                                <li>Vraag naar verschillende soorten brood</li>
+                                <li>Praat over de prijzen</li>
+                                <li>Vraag naar openingstijden</li>
+                                <li>Gebruik woorden die je in een bakkerij hoort</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="mt-8 text-center">
+                        <button
+                            onClick={startExercise}
+                            className="bg-[#0099a9] hover:bg-[#007a8a] text-white font-semibold py-3 px-8 rounded-md text-lg"
+                        >
+                            Start de Oefening
+                        </button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-12 bg-[#004c97]">
             <div className="w-full max-w-2xl bg-white rounded-lg shadow-lg p-6">
@@ -127,7 +202,7 @@ export default function NewProject() {
                     {/* Input Section */}
                     <div className="w-full md:w-1/2">
                         <h1 className="text-2xl font-bold text-center mb-6 text-[#004c97]">
-                            Praat met de Bakker
+                            Gesprek met de Bakker
                         </h1>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
@@ -157,7 +232,17 @@ export default function NewProject() {
 
                         {bakerResponse && (
                             <div className="mt-4 p-4 bg-gray-50 rounded-md">
-                                <p className="text-gray-700 italic">"{bakerResponse}"</p>
+                                <p className="text-gray-700 italic mb-2">"{bakerResponse}"</p>
+                                <button
+                                    onClick={() => speakText(bakerResponse)}
+                                    disabled={isSpeaking}
+                                    className="text-[#0099a9] hover:text-[#007a8a] text-sm font-medium flex items-center gap-1"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                    </svg>
+                                    Herhaal
+                                </button>
                             </div>
                         )}
                     </div>
