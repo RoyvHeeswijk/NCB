@@ -28,11 +28,11 @@ export default function Home() {
           <Link href="/new-project" className="block">
             <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow duration-300">
               <h2 className="text-xl font-semibold mb-3 text-[#0099a9]">
-                Nieuw Project
+                Praat met de Bakker
               </h2>
               <p className="text-gray-600">
-                Een nieuw project dat binnenkort beschikbaar zal zijn.
-                Houd deze pagina in de gaten voor updates!
+                Oefen je Nederlandse spreekvaardigheid in een interactief gesprek met een vriendelijke bakker.
+                Bestel brood, vraag naar prijzen en verbeter je uitspraak!
               </p>
             </div>
           </Link>
