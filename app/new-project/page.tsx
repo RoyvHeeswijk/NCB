@@ -598,7 +598,7 @@ export default function NewProject() {
 
     return (
         <div className="flex flex-col h-screen bg-gray-900 text-white">
-            <div className="relative flex-grow w-full h-3/5 sm:h-2/3 md:h-3/4 bg-gray-700">
+            <div className="relative w-full h-3/5 bg-gray-700">
                 <Image
                     src="/Bakker.png"
                     alt="Bakker achtergrond"
@@ -643,27 +643,27 @@ export default function NewProject() {
                         </div>
                     </div>
                 )}
-
-                <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end p-4 sm:p-6 md:p-8 z-10 pb-8 sm:pb-12">
-                    {bakerResponse && (
-                        <div className="text-center">
-                            <p className="text-white text-xl sm:text-2xl md:text-3xl font-semibold bg-slate-800 bg-opacity-75 p-3 sm:p-4 rounded-lg inline-block shadow-lg">
-                                {bakerResponse}
-                            </p>
-                            <button
-                                onClick={() => speakText(bakerResponse)}
-                                disabled={isSpeaking}
-                                className="text-gray-200 hover:text-white text-xs font-medium flex items-center gap-1 justify-center mt-2 bg-black bg-opacity-40 hover:bg-opacity-50 py-1 px-2 rounded-full transition-colors"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                </svg>
-                                Herhaal
-                            </button>
-                        </div>
-                    )}
-                </div>
             </div>
+
+            {bakerResponse && (
+                <div className="w-full bg-gray-800 flex flex-col items-center justify-center py-3 sm:py-4">
+                    <div className="text-center max-w-xl mx-auto px-4">
+                        <p className="text-white text-xl sm:text-2xl md:text-3xl font-semibold bg-slate-800 bg-opacity-75 p-3 sm:p-4 rounded-lg inline-block shadow-lg">
+                            {bakerResponse}
+                        </p>
+                        <button
+                            onClick={() => speakText(bakerResponse)}
+                            disabled={isSpeaking}
+                            className="text-gray-200 hover:text-white text-xs font-medium flex items-center gap-1 justify-center mt-2 bg-black bg-opacity-40 hover:bg-opacity-50 py-1 px-2 rounded-full transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            </svg>
+                            Herhaal
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {error && (
                 <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white py-2 px-4 rounded-md shadow-lg text-sm z-20 w-auto max-w-xs sm:max-w-sm text-center">
@@ -671,7 +671,7 @@ export default function NewProject() {
                 </div>
             )}
 
-            <div className="w-full h-2/5 sm:h-1/3 md:h-1/4 bg-gray-800 p-4 sm:p-6 flex flex-col justify-end items-center relative">
+            <div className="flex-grow w-full bg-gray-800 p-4 sm:p-6 flex flex-col justify-end items-center relative">
                 <div className="w-full max-w-md mb-3 sm:mb-4 flex items-center justify-center h-16 sm:h-20">
                     {isProcessingAudio ? (
                         <div className="w-full p-3 bg-gray-700 rounded-lg text-center shadow">
