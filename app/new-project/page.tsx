@@ -392,6 +392,8 @@ export default function NewProject() {
         setError("");
         setIsSpeaking(false);
         setBakerResponse(""); // Clear the previous response immediately
+        setInputText("");
+        setIsTextConfirmed(false);
 
         setLanguageLevel(level);
         setCurrentScreen('chat');
