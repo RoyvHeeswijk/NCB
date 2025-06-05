@@ -68,6 +68,7 @@ export default function NewProject() {
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const [isTextConfirmed, setIsTextConfirmed] = useState(false);
     const [isProcessingAudio, setIsProcessingAudio] = useState(false);
+    const [remainingTime, setRemainingTime] = useState<number>(20);
     const [languageLevel, setLanguageLevel] = useState<LanguageLevel | null>(null);
     const [showLevelWarning, setShowLevelWarning] = useState(false);
     const [warningPosition, setWarningPosition] = useState({ x: 0, y: 0 });
@@ -223,6 +224,7 @@ export default function NewProject() {
             setIsListening(true);
             setIsTextConfirmed(false);
             setIsProcessingAudio(false);
+            setRemainingTime(20);
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const localAudioChunks: Blob[] = [];
@@ -270,11 +272,27 @@ export default function NewProject() {
             };
             recorder.start(100);
             const currentRecorderInstance = recorder;
-            setTimeout(() => {
-                if (currentRecorderInstance && currentRecorderInstance.state === "recording") {
-                    currentRecorderInstance.stop();
-                }
-            }, 5000);
+
+            // Start the countdown timer
+            const timer = setInterval(() => {
+                setRemainingTime(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        if (currentRecorderInstance && currentRecorderInstance.state === "recording") {
+                            currentRecorderInstance.stop();
+                        }
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            // Cleanup timer when recording stops
+            recorder.addEventListener('stop', () => {
+                clearInterval(timer);
+                setRemainingTime(20);
+            });
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "Fout bij starten opname");
             setIsListening(false);
@@ -682,8 +700,14 @@ export default function NewProject() {
 
                 <div className="flex justify-center items-center mb-2 sm:mb-3">
                     <button
-                        onClick={startListening}
-                        disabled={isLoading || isSpeaking || isListening || isProcessingAudio}
+                        onClick={() => {
+                            if (isListening && mediaRecorder && mediaRecorder.state === "recording") {
+                                mediaRecorder.stop();
+                            } else {
+                                startListening();
+                            }
+                        }}
+                        disabled={isLoading || isSpeaking || isProcessingAudio}
                         className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800
                             ${isListening
                                 ? 'bg-red-500 hover:bg-red-600 focus:ring-red-400 animate-pulse'
@@ -706,7 +730,7 @@ export default function NewProject() {
                 </div>
                 {isListening && (
                     <p className="text-center text-gray-300 text-xs sm:text-sm mb-3 sm:mb-4">
-                        Aan het luisteren... (max 5s)
+                        Nog {remainingTime} seconden om op te nemen...
                     </p>
                 )}
 
