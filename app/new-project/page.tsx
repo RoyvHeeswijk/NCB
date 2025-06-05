@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -71,6 +71,8 @@ export default function NewProject() {
     const [languageLevel, setLanguageLevel] = useState<LanguageLevel | null>(null);
     const [showLevelWarning, setShowLevelWarning] = useState(false);
     const [warningPosition, setWarningPosition] = useState({ x: 0, y: 0 });
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const currentUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
     useEffect(() => {
         const loadVoices = () => {
@@ -82,17 +84,47 @@ export default function NewProject() {
         window.speechSynthesis.onvoiceschanged = loadVoices;
 
         return () => {
+            // Cleanup speech synthesis when component unmounts
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            if (currentUtteranceRef.current) {
+                currentUtteranceRef.current.onstart = null;
+                currentUtteranceRef.current.onend = null;
+                currentUtteranceRef.current.onerror = null;
+                currentUtteranceRef.current = null;
+            }
             window.speechSynthesis.onvoiceschanged = null;
+
+            // Cancel any ongoing fetch requests
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
         };
     }, []);
 
     const goToChatScreen = async (exerciseType?: string) => {
+        // Cancel any ongoing speech before changing screens
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
         setCurrentScreen('chat');
         await fetchInitialGreeting();
     };
 
-    const fetchInitialGreeting = async () => {
+    const fetchInitialGreeting = async (levelOverride?: LanguageLevel) => {
         try {
+            // Cancel any previous ongoing requests
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+
+            // Create new abort controller for this request
+            abortControllerRef.current = new AbortController();
+
+            // Use levelOverride if provided, otherwise use current languageLevel
+            const currentLevel = levelOverride || languageLevel;
+
             const response = await fetch("/api/text-to-speech", {
                 method: "POST",
                 headers: {
@@ -100,18 +132,20 @@ export default function NewProject() {
                 },
                 body: JSON.stringify({
                     isInitialGreeting: true,
-                    languageLevel
+                    languageLevel: currentLevel
                 }),
+                signal: abortControllerRef.current.signal
             });
 
-            if (!response.ok) {
-                throw new Error("Er is een fout opgetreden bij het ophalen van de begroeting");
-            }
-
+            if (!response.ok) throw new Error("Fout bij genereren tekst");
             const data = await response.json();
             setBakerResponse(data.text);
             speakText(data.text);
         } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Request was aborted, do nothing
+                return;
+            }
             console.error(err);
             setError("Kon de bakker niet bereiken. Probeer het later opnieuw.");
         }
@@ -119,8 +153,18 @@ export default function NewProject() {
 
     const speakText = (text: string) => {
         if ('speechSynthesis' in window) {
+            // Cancel any previous speech and clear its references
             window.speechSynthesis.cancel();
+            if (currentUtteranceRef.current) {
+                // Clear event handlers to prevent old utterances from triggering errors
+                currentUtteranceRef.current.onstart = null;
+                currentUtteranceRef.current.onend = null;
+                currentUtteranceRef.current.onerror = null;
+            }
+
             const utterance = new SpeechSynthesisUtterance(text);
+            currentUtteranceRef.current = utterance;
+
             const dutchVoice = voices.find(voice =>
                 voice.lang.includes('nl') && voice.name.includes('Female')
             ) || voices.find(voice => voice.lang.includes('nl')) || voices[0];
@@ -129,25 +173,37 @@ export default function NewProject() {
                 utterance.voice = dutchVoice;
             }
             utterance.lang = 'nl-NL';
-            utterance.rate = 0.85; // Adjusted for natural pace
+            utterance.rate = 0.85;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
-            // const textWithPauses = text
-            //     .replace(/[.,!?]/g, match => match + ' <break time="300ms"/>') // Add pauses
-            //     .replace(/\s+/g, ' ');
-            // utterance.text = textWithPauses; // Use text with pauses for SSML if supported, else simple text
 
-            // Clean the text by normalizing whitespace and removing leading/trailing spaces.
-            // The TTS engine should handle natural pauses at punctuation.
             const cleanedText = text.replace(/\\s+/g, ' ').trim();
             utterance.text = cleanedText;
 
-            utterance.onstart = () => setIsSpeaking(true);
-            utterance.onend = () => setIsSpeaking(false);
-            utterance.onerror = () => {
-                setIsSpeaking(false);
-                setError("Er is een fout opgetreden bij het afspelen van de spraak");
+            utterance.onstart = () => {
+                // Only set speaking state if this is still the current utterance
+                if (currentUtteranceRef.current === utterance) {
+                    setIsSpeaking(true);
+                }
             };
+
+            utterance.onend = () => {
+                // Only update state if this is still the current utterance
+                if (currentUtteranceRef.current === utterance) {
+                    setIsSpeaking(false);
+                    currentUtteranceRef.current = null;
+                }
+            };
+
+            utterance.onerror = (event) => {
+                // Only show error if this is still the current utterance and it's not a cancellation
+                if (currentUtteranceRef.current === utterance && event.error !== 'interrupted') {
+                    setIsSpeaking(false);
+                    setError("Er is een fout opgetreden bij het afspelen van de spraak");
+                    currentUtteranceRef.current = null;
+                }
+            };
+
             window.speechSynthesis.speak(utterance);
         } else {
             setError("Spraak wordt niet ondersteund in deze browser");
@@ -243,7 +299,16 @@ export default function NewProject() {
         setIsLoading(true);
         setError("");
         setBakerResponse("");
+
         try {
+            // Cancel any previous ongoing requests
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+            }
+
+            // Create new abort controller for this request
+            abortControllerRef.current = new AbortController();
+
             const response = await fetch("/api/text-to-speech", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -251,12 +316,18 @@ export default function NewProject() {
                     text: textToSubmit,
                     languageLevel
                 }),
+                signal: abortControllerRef.current.signal
             });
+
             if (!response.ok) throw new Error("Fout bij genereren tekst");
             const data = await response.json();
             setBakerResponse(data.text);
             speakText(data.text);
         } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Request was aborted, do nothing
+                return;
+            }
             setError("Er is een fout opgetreden. Probeer het later opnieuw.");
             console.error(err);
         } finally {
@@ -284,17 +355,46 @@ export default function NewProject() {
     };
 
     const handleLevelSelect = (level: LanguageLevel) => {
-        setLanguageLevel(level);
-        setCurrentScreen('chat');
-        fetchInitialGreeting();
-    };
-
-    const handleBackToMenu = () => {
-        // Stop any ongoing speech
+        // Cancel any ongoing speech and requests before changing levels
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
         }
+        if (currentUtteranceRef.current) {
+            // Clear event handlers to prevent error messages from cancelled speech
+            currentUtteranceRef.current.onstart = null;
+            currentUtteranceRef.current.onend = null;
+            currentUtteranceRef.current.onerror = null;
+            currentUtteranceRef.current = null;
+        }
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Clear any existing errors and reset states
+        setError("");
         setIsSpeaking(false);
+        setBakerResponse(""); // Clear the previous response immediately
+
+        setLanguageLevel(level);
+        setCurrentScreen('chat');
+
+        // Pass the new level directly to avoid race condition
+        fetchInitialGreeting(level);
+    };
+
+    const handleBackToMenu = () => {
+        // Stop any ongoing speech and clear references
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        if (currentUtteranceRef.current) {
+            currentUtteranceRef.current.onstart = null;
+            currentUtteranceRef.current.onend = null;
+            currentUtteranceRef.current.onerror = null;
+            currentUtteranceRef.current = null;
+        }
+        setIsSpeaking(false);
+        setError("");
         setCurrentScreen('selection');
     };
 

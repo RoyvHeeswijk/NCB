@@ -15,8 +15,8 @@ interface RequestBody {
 
 const INITIAL_GREETINGS: Record<LanguageLevel, string> = {
     A1: "Hallo! Ik ben de bakker. Welkom in mijn winkel. Kan ik u ergens mee helpen?",
-    A2: "Goedendag! Ik ben de bakker van deze winkel. Ik kan u helpen met het kiezen van brood of iets lekkers. We hebben vandaag vers brood en lekkere koekjes.",
-    B1: "Welkom in mijn bakkerij! Ik ben de bakker en ik help u graag met het uitzoeken van iets lekkers. We hebben een ruime keuze aan vers gebakken brood, knapperige broodjes en verschillende soorten gebak. Waar kan ik u mee helpen?"
+    A2: "Goedendag! Welkom in mijn bakkerij. Ik ben de bakker hier. Wat kan ik voor u betekenen?",
+    B1: "Welkom in mijn bakkerij! Ik ben de bakker en help u graag. We hebben vers brood, broodjes en gebak. Wat wilt u kopen?"
 };
 
 const levelDescriptions: Record<LanguageLevel, string> = {
